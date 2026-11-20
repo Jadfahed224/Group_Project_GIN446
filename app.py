@@ -79,6 +79,28 @@ def paginate(items, page):
     return items[start:start + PER_PAGE], page, total_pages
 
 
+@app.route("/")
+def home():
+    try:
+        types = api_client.get_type_names()
+    except api_client.PokeAPIError:
+        types = []   # PokéAPI is down: still show the page, without type buttons
+    return render_template("home.html", types=types)
+
+
+@app.route("/search")
+def search():
+    error, text = validate_search(request.args.get("q", ""))
+    if error:
+        flash(error)
+        return redirect(url_for("home"))
+    matches = api_client.search(text)
+    page_items, page, total_pages = paginate(matches, request.args.get("page", 1, type=int))
+    return render_template("results.html", query=text, total=len(matches),
+                           pokemons=api_client.get_cards(page_items),
+                           page=page, total_pages=total_pages)
+
+
 
 
 
