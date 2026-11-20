@@ -101,6 +101,35 @@ def search():
                            page=page, total_pages=total_pages)
 
 
+@app.route("/type/<name>")
+def type_page(name):
+    name = name.lower()
+    if name not in api_client.get_type_names():
+        abort(404)
+    members = api_client.get_type_members(name)
+    page_items, page, total_pages = paginate(members, request.args.get("page", 1, type=int))
+    return render_template("type.html", type_name=name, total=len(members),
+                           pokemons=api_client.get_cards(page_items),
+                           page=page, total_pages=total_pages)
+
+
+@app.route("/pokemon/<name_or_id>")
+def pokemon(name_or_id):
+    species = api_client.find_species(name_or_id)
+    if species is None:
+        abort(404)
+    data = api_client.get_pokemon_details(species["id"])
+    if data is None:
+        abort(404)
+    return render_template("detail.html", pokemon=data)
+
+
+@app.route("/random")
+def random_pokemon():
+    species = random.choice(api_client.get_species_list())
+    return redirect(url_for("pokemon", name_or_id=species["id"]))
+
+
 
 
 
