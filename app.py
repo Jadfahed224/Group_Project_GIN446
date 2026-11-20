@@ -1,5 +1,5 @@
 """
-<YOUR PROJECT NAME> -- a Flask web app (team project starter).
+PokeAPI -- a Flask web app (team project starter).
 
 Content comes from an external API (see api_client.py). The only data stored
 is user accounts and their favorites (see models.py). Authentication is
