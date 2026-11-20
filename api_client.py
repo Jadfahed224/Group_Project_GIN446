@@ -100,3 +100,15 @@ def get_species_list():
     return _save_to_cache("species-list", species_list)
 
 
+def find_species(name_or_id):
+    """Find one species by its number ('25') or its exact name ('pikachu').
+    Returns {"id", "name"} or None if it is not in our list."""
+    text = str(name_or_id).strip().lower()
+    for species in get_species_list():
+        if text.isdigit() and int(text) == species["id"]:
+            return species
+        if text == species["name"]:
+            return species
+    return None
+
+
