@@ -127,3 +127,17 @@ def search(text):
         if wanted in _simplify(species["name"]):
             matches.append(species)
     return matches
+
+# ---------- 5. Types -------------------------------------------------
+def get_type_names():
+    """The 18 real types: ["normal", "fighting", ..., "fairy"]."""
+    cached = _from_cache("type-names")
+    if cached is not None:
+        return cached
+    data = _get(f"{BASE_URL}/type?limit=50")
+    names = []
+    for item in data["results"]:
+        if item["name"] not in SKIP_TYPES:
+            names.append(item["name"])
+    return _save_to_cache("type-names", names)
+
