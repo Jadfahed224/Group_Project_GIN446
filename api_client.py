@@ -226,3 +226,24 @@ def get_evolution(chain_url):
         to_visit.extend(link["evolves_to"])   # ...and add what it evolves into
     return _save_to_cache(chain_url, stages)
 
+
+def get_pokemon_details(pokemon_id):
+    """Everything for the details page: get_pokemon() + genus, description, evolution."""
+    key = f"details/{pokemon_id}"
+    cached = _from_cache(key)
+    if cached is not None:
+        return cached
+    pokemon = get_pokemon(pokemon_id)
+    if pokemon is None:
+        return None
+    details = dict(pokemon)   # a copy, so we do not change the cached card
+    details["genus"] = ""
+    details["description"] = ""
+    details["evolution"] = []
+    species = _get(f"{BASE_URL}/pokemon-species/{pokemon_id}")
+    if species is not None:
+        details["genus"] = _english(species["genera"], "genus")
+        details["description"] = _english(species["flavor_text_entries"], "flavor_text")
+        if species["evolution_chain"] is not None:
+            details["evolution"] = get_evolution(species["evolution_chain"]["url"])
+    return _save_to_cache(key, details)
