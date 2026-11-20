@@ -205,3 +205,24 @@ def get_cards(species_list):
         if pokemon is not None:
             cards.append(pokemon)
     return cards
+
+
+def get_evolution(chain_url):
+    """The evolution line as a flat list: [{"id", "name", "image"}, ...]."""
+    cached = _from_cache(chain_url)
+    if cached is not None:
+        return cached
+    data = _get(chain_url)
+    if data is None:
+        return []
+    stages = []
+    to_visit = [data["chain"]]          # start with the first Pokémon of the line
+    while len(to_visit) > 0:
+        link = to_visit.pop(0)          # take the next one...
+        species_id = _id_from_url(link["species"]["url"])
+        stages.append({"id": species_id,
+                       "name": _pretty(link["species"]["name"]),
+                       "image": f"{SPRITE_URL}/{species_id}.png"})
+        to_visit.extend(link["evolves_to"])   # ...and add what it evolves into
+    return _save_to_cache(chain_url, stages)
+
