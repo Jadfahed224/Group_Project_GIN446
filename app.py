@@ -8,6 +8,8 @@ email + password with Flask sessions.
 Run locally:   flask run --debug    ->   http://127.0.0.1:5000
 """
 import os
+import math
+import random
 from functools import wraps
 
 from flask import (Flask, render_template, request, redirect, url_for,
@@ -17,6 +19,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Favorite
 import api_client
 from validators import validate_signup, validate_login
+from validators import validate_signup, validate_login
+from validators import validate_search
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
@@ -63,25 +67,19 @@ def login_required(view):
     return wrapped
 
 
-# ---------- content (from your API) --------------------------------
-@app.route("/")
-def home():
-    return render_template("home.html")
+# ---------- content from PokeAPI ----------------------------
+PER_PAGE = 20   # at most 20 Pokémon on one results page
 
 
-@app.route("/search")
-def search():
-    query = request.args.get("q", "").strip()
-    items = api_client.search(query) if query else []
-    return render_template("results.html", items=items, query=query)
+def paginate(items, page):
+    """Return (the items of this page, the page number, the number of pages)."""
+    total_pages = max(1, math.ceil(len(items) / PER_PAGE))
+    page = min(max(page, 1), total_pages)   # keep page between 1 and total_pages
+    start = (page - 1) * PER_PAGE
+    return items[start:start + PER_PAGE], page, total_pages
 
 
-@app.route("/item/<item_id>")
-def item(item_id):
-    data = api_client.get_item(item_id)
-    if not data:
-        abort(404)
-    return render_template("detail.html", item=data)
+
 
 
 # ===================================================================
