@@ -86,3 +86,17 @@ def _english(entries, field):
         if entry["language"]["name"] == "en":
             return entry[field].replace("\n", " ").replace("\f", " ")
     return ""
+
+# ---------- 4. The list of all species (for search and random) -----
+def get_species_list():
+    """Every Pokémon species as a list of {"id", "name"}, sorted by id."""
+    cached = _from_cache("species-list")
+    if cached is not None:
+        return cached
+    data = _get(f"{BASE_URL}/pokemon-species?limit=1500")
+    species_list = []
+    for item in data["results"]:
+        species_list.append({"id": _id_from_url(item["url"]), "name": item["name"]})
+    return _save_to_cache("species-list", species_list)
+
+
