@@ -130,7 +130,16 @@ def random_pokemon():
     return redirect(url_for("pokemon", name_or_id=species["id"]))
 
 
+@app.errorhandler(404)
+def not_found(error):
+    return render_template("error.html", title="Not found",
+                           message="We could not find this page or this Pokémon."), 404
 
+
+@app.errorhandler(api_client.PokeAPIError)
+def pokeapi_down(error):
+    return render_template("error.html", title="PokéAPI is not answering",
+                           message="We could not reach PokéAPI. Please try again in a minute."), 503
 
 
 # ===================================================================
