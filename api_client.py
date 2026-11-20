@@ -141,3 +141,20 @@ def get_type_names():
             names.append(item["name"])
     return _save_to_cache("type-names", names)
 
+
+def get_type_members(type_name):
+    """All species of one type, as a list of {"id", "name"}."""
+    key = f"type/{type_name}"
+    cached = _from_cache(key)
+    if cached is not None:
+        return cached
+    data = _get(f"{BASE_URL}/type/{type_name}")
+    if data is None:
+        return []
+    members = []
+    for entry in data["pokemon"]:
+        species = find_species(_id_from_url(entry["pokemon"]["url"]))
+        # Mega and other special forms (id 10001+) are not in our species list: skip them.
+        if species is not None:
+            members.append(species)
+    return _save_to_cache(key, members)
