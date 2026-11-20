@@ -112,3 +112,18 @@ def find_species(name_or_id):
     return None
 
 
+def search(text):
+    """All species whose name contains the text (or whose number is the text)."""
+    if text.isdigit():
+        species = find_species(text)
+        if species is None:
+            return []
+        return [species]
+    wanted = _simplify(text)
+    if wanted == "":          # the user typed only symbols, like "!!!"
+        return []
+    matches = []
+    for species in get_species_list():
+        if wanted in _simplify(species["name"]):
+            matches.append(species)
+    return matches
