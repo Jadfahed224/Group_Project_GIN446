@@ -158,3 +158,50 @@ def get_type_members(type_name):
         if species is not None:
             members.append(species)
     return _save_to_cache(key, members)
+
+# ---------- 6. One Pokémon -------------------------------------------
+def get_pokemon(pokemon_id):
+    """The main data of one Pokémon (used for cards AND the details page).
+    Returns a small dict, or None if it does not exist."""
+    key = f"pokemon/{pokemon_id}"
+    cached = _from_cache(key)
+    if cached is not None:
+        return cached
+    data = _get(f"{BASE_URL}/pokemon/{pokemon_id}")
+    if data is None:
+        return None
+
+    types = []
+    for t in data["types"]:
+        types.append(t["type"]["name"])
+
+    abilities = []
+    for a in data["abilities"]:
+        abilities.append({"name": _pretty(a["ability"]["name"]), "hidden": a["is_hidden"]})
+
+    stats = []
+    for s in data["stats"]:
+        stats.append({"name": STAT_NAMES.get(s["stat"]["name"], s["stat"]["name"]),
+                      "value": s["base_stat"]})
+
+    pokemon = {
+        "id": data["id"],
+        "name": _pretty(data["species"]["name"]),
+        "image": data["sprites"]["front_default"],   # can be None
+        "types": types,
+        "height_m": data["height"] / 10,   # decimeters -> meters
+        "weight_kg": data["weight"] / 10,  # hectograms -> kilograms
+        "abilities": abilities,
+        "stats": stats,
+    }
+    return _save_to_cache(key, pokemon)
+
+
+def get_cards(species_list):
+    """Turn a list of {"id", "name"} into full cards (adds image and types)."""
+    cards = []
+    for species in species_list:
+        pokemon = get_pokemon(species["id"])
+        if pokemon is not None:
+            cards.append(pokemon)
+    return cards
