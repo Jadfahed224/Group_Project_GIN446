@@ -31,3 +31,13 @@ def validate_login(form):
     if password == "":
         errors["password"] = "Password is required."
     return errors, email
+
+
+def validate_search(raw):
+    """Clean the search text. Returns (error message or None, cleaned text)."""
+    text = (raw or "").strip().lower()
+    if text == "":
+        return "Type a name or a number to search.", text
+    if len(text) > 30:
+        return "Search text must be 30 characters or less.", text
+    return None, text
