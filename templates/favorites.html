@@ -1,23 +1,58 @@
 {% extends "base.html" %}
-{% block title %}My Favorites{% endblock %}
+{% from "macros.html" import icon, nice, dex, sprite %}
+
+{# Route: GET /favorites   (function name: favorites, needs login)
+   Needs:
+     favorites   list of Favorite rows from the database, newest first.
+                 Each one has: id, pokemon_id, pokemon_name, sprite_url, saved_at #}
+
+{% block title %}My favorites | Pokémon Finder{% endblock %}
+
 {% block content %}
-<h1>My Favorites</h1>
-{% if favorites %}
-  <div class="cards">
-    {% for f in favorites %}
-      <div class="card">
-        <a href="{{ url_for('item', item_id=f.item_id) }}">
-          <img src="{{ f.item_image }}" alt="{{ f.item_title }}"><span>{{ f.item_title }}</span>
-        </a>
-        <form method="post" action="{{ url_for('favorites_remove') }}">
-          <input type="hidden" name="item_id" value="{{ f.item_id }}">
-          <input type="hidden" name="next" value="{{ url_for('favorites') }}">
-          <button class="btn remove">Remove</button>
+<section class="container page">
+
+  <article class="fav-head">
+    <article>
+      <h1>My favorites</h1>
+      <p class="lead">
+        {% if favorites %}
+          {{ favorites | length }} saved Pokémon. Only you can see this list.
+        {% else %}
+          Only you can see this list.
+        {% endif %}
+      </p>
+  </article>
+    {% if favorites | length > 1 %}<span class="muted">Newest first</span>{% endif %}
+  </article>
+
+  {% if favorites %}
+  <ul class="fav-list">
+    {% for fav in favorites %}
+    <li class="fav-row">
+      <article class="fav-art">{{ sprite(fav.sprite_url, fav.pokemon_name) }}</article>
+      <span class="dex">{{ dex(fav.pokemon_id) }}</span>
+      <span class="fav-name">{{ nice(fav.pokemon_name) }}</span>
+      <span class="fav-date">Saved {{ fav.saved_at.strftime("%d %b %Y") }}</span>
+      <article class="fav-actions">
+        <a class="btn btn-small btn-ghost" href="{{ url_for('pokemon_page', name_or_id=fav.pokemon_id) }}" data-loading>View</a>
+        <form action="{{ url_for('favorites_remove', fav_id=fav.id) }}" method="post">
+          <button class="btn btn-small btn-danger" type="submit">Remove</button>
         </form>
-      </div>
+      </article>
+    </li>
     {% endfor %}
-  </div>
-{% else %}
-  <p>No favorites yet. Find something and save it!</p>
-{% endif %}
+  </ul>
+
+  {% else %}
+  <article class="empty">
+    <article class="empty-icon">{{ icon("heart") }}</article>
+    <h1>No favorites yet</h1>
+    <p>Open any Pokémon and press “Save to favorites”. It will show up here.</p>
+    <article class="actions">
+      <a class="btn btn-primary" href="{{ url_for('home') }}">Find a Pokémon</a>
+    </article>
+  </article>
+  {% endif %}
+
+</section>
 {% endblock %}

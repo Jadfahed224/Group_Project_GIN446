@@ -1,10 +1,53 @@
 {% extends "base.html" %}
+{% from "macro.html" import icon %}
+
+{# Route: GET / (function name: home)
+    Needs: types = list of type names from PokéAPI /type, for example ["normal", "fire", ...] #}
+
 {% block content %}
-<h1>Find something</h1>
-<!-- TODO: change this to match your topic (e.g. "Search recipes", "Find a book") -->
-<form class="search" action="{{ url_for('search') }}" method="get">
-  <input type="text" name="q" placeholder="Search...">
-  <button type="submit">Search</button>
-</form>
-<p class="hint">This starter shows sample items. Edit <code>api_client.py</code> to use your own API.</p>
+<section class="hero">
+  <article class="container hero-inner">
+
+    <article>
+      <h1>Find a Pokémon</h1>
+      <p class="lead">Type a name or a Pokédex number. Part of a name is enough.</p>
+      
+      <form class="big-search" action="{{ url_for('search') }}" method="get" role="search" data-loading>
+      {{ icon("search") }}
+        <label class="sr-only" for="q">Pokémon name or number</label>  
+        <input id="q" type="search" name="q" placeholder="Pikachu, 25 ,char..." maxlength="30" required autofocus>
+        <button class="btn btn-primary" type="submit">Search</button>
+      </form>
+
+      <p class="try">
+        Try
+        <a href="{{ url_for('search', q='pikachu') }}" data-loading>pikachu</a>,
+        <a href="{{ url_for('search', q='eevee') }}" data-loading>eevee</a>,
+        <a href="{{ url_for('search', q='150') }}" data-loading>150</a> or
+        <a href="{{ url_for('search', q='char') }}" data-loading>char</a>
+      </p>
+    </article>
+
+    <aside class="random-card">
+      <article class="mystery" aria-hidden="true">?</article>
+      <article>
+        <h2>Not sure where to start?</h2>
+        <p>Open a random Pokémon and see what uou get.</p>
+        <a class="btn btn-ghost" href="{{ url_for('random_pokemon') }}" data-loading>{{ icon("dice") }} Random Pokémon</a>
+      </article>
+    </aside>
+  </article>
+</section>
+
+<section class="container types-section" id="types">
+  <h2> Browse by type</h2>
+  <p>Pick a type to see all Pokémon of that type</p>
+
+  <article class="tupe-grid">
+    {% for t in types %}
+      <a class="type-title type-{{ t }}" href="{{ url_for('type_page', name=t) }}" data-loading>{{ t | capitalize }}</a>
+    {% endfor %}
+  </article>
+</section>
+
 {% endblock %}

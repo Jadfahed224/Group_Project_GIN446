@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, nice, dex, type_chip, sprite %}
+
+{# Route: GET /pokemon/<name_or_id>   (function name: pokemon_page)
+   Needs:
+     p            the Pokémon, a dict with:
+                    id, name, height, weight (raw numbers from PokéAPI)
+                    types        ["electric"]
+                    image        picture url (sprites.front_default)
+                    genus        "Mouse Pokémon" (from /pokemon-species, English)
+                    description  short English text (from /pokemon-species)
+                    abilities    [{"name": "static", "hidden": False}, ...]
+                    stats        [{"name": "hp", "value": 35}, ...]
+                    evolution    list of stages, each stage is a list of Pokémon:
+                                 [[{"id": 172, "name": "pichu", "sprite": "..."}],
+                                  [{"id": 25, "name": "pikachu", "sprite": "..."}], ...]
+     is_favorite  True if the logged in user already saved it #}
+
+
+{% block title %}{{ nice(p.name) }} | Pokémon Finder{% endblock %}
+
+{% block content %}
+{# Nicer names for the stats that PokéAPI sends #}
+{% set stat_labels = {
+  "hp": "HP",
+  "attack": "Attack",
+  "defense": "Defense",
+  "special-attack": "Sp. Attack",
+  "special-defense": "Sp. Defense",
+  "speed": "Speed"
+} %}
+
+<section class="detail-band type-{{ p.types[0] }}">
+  <div class="container">
+
+    {% if request.referrer and "/search" in request.referrer %}
+    <a class="back" href="{{ request.referrer }}">‹ Back to results</a>
+    {% endif %}
+
+    <div class="detail-top">
+      <div class="detail-art">
+        {{ sprite(p.image, p.name) }}
+      </div>
+
+      <div class="detail-info">
+        <span class="dex">{{ dex(p.id) }}</span>
+        <h1>{{ nice(p.name) }}</h1>
+        {% if p.genus %}<p class="genus">{{ p.genus }}</p>{% endif %}
+
+        <div class="chips">
+          {% for t in p.types %}{{ type_chip(t) }}{% endfor %}
+        </div>
+
+        {% if p.description %}
+        <p class="description">{{ p.description }}</p>
+        {% endif %}
+
+        <div class="actions">
+          {% if is_favorite %}
+            <span class="btn btn-saved">{{ icon("heart") }} Saved in your favorites</span>
+          {% else %}
+            <form action="{{ url_for('favorites_add') }}" method="post">
+              <input type="hidden" name="pokemon_id" value="{{ p.id }}">
+              <input type="hidden" name="pokemon_name" value="{{ p.name }}">
+              <input type="hidden" name="sprite_url" value="{{ p.image or '' }}">
+              <button class="btn btn-heart" type="submit">{{ icon("heart") }} Save to favorites</button>
+            </form>
+          {% endif %}
+          <a class="btn btn-ghost" href="{{ url_for('random_pokemon') }}" data-loading>{{ icon("dice") }} Random Pokémon</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="container detail-lower">
+
+  <div class="box">
+    <h2>Base stats</h2>
+    {% for s in p.stats %}
+    <div class="stat">
+      <span>{{ stat_labels.get(s.name, nice(s.name)) }}</span>
+      <b>{{ s.value }}</b>
+      {# bar is full at 200, a few Pokémon go higher so we stop at 100% #}
+      <div class="bar"><span style="width: {{ [s.value / 2, 100] | min }}%"></span></div>
+    </div>
+    {% endfor %}
+    <div class="stat stat-total">
+      <span>Total</span>
+      <b>{{ p.stats | sum(attribute="value") }}</b>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="box">
+      <h2>About</h2>
+      {# PokéAPI gives height in decimeters and weight in hectograms, so we divide by 10 #}
+      <dl class="facts">
+        <div>
+          <dt>Height</dt>
+          <dd>{{ "%.1f" | format(p.height / 10) }} m</dd>
+        </div>
+        <div>
+          <dt>Weight</dt>
+          <dd>{{ "%.1f" | format(p.weight / 10) }} kg</dd>
+        </div>
+        <div>
+          <dt>Abilities</dt>
+          <dd>
+            {% for a in p.abilities %}
+              {{ nice(a.name) }}{% if a.hidden %} <span class="hidden-ability">(hidden)</span>{% endif %}{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="box">
+      <h2>Evolution</h2>
+      {% if p.evolution and p.evolution | length > 1 %}
+      <div class="evolution">
+        {% for stage in p.evolution %}
+          {% if not loop.first %}<span class="evo-arrow" aria-hidden="true">›</span>{% endif %}
+          {# a stage with 3 Pokémon (like Eevee's) gets 3 times the space #}
+          <div class="evo-stage" style="flex-grow: {{ stage | length }}">
+            {% for e in stage %}
+            <a class="evo {{ 'current' if e.id == p.id }}" href="{{ url_for('pokemon_page', name_or_id=e.name) }}" data-loading>
+              <div class="evo-art">{{ sprite(e.sprite, e.name) }}</div>
+              <div class="dex">{{ dex(e.id) }}</div>
+              <div class="evo-name">{{ nice(e.name) }}</div>
+            </a>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted">{{ nice(p.name) }} does not evolve.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</section>
+{% endblock %}

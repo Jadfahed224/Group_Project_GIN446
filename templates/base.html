@@ -1,31 +1,125 @@
+{% from "macros.html" import icon %}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}My Project{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <title>{% block title %}Pokémon Finder{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}" type="image/svg+xml">
+
+  <!-- Fonts: Fredoka for titles, Figtree for text -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fredoka:wght@500;600&display=swap">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <header class="nav">
-    <a class="brand" href="{{ url_for('home') }}">My Project</a>
-    <nav>
-      <a href="{{ url_for('home') }}">Home</a>
-      {% if current_user %}
-        <a href="{{ url_for('favorites') }}">My Favorites</a>
-        <span class="who">{{ current_user.email }}</span>
-        <a href="{{ url_for('logout') }}">Log out</a>
-      {% else %}
-        <a href="{{ url_for('login') }}">Log in</a>
-        <a href="{{ url_for('signup') }}">Sign up</a>
-      {% endif %}
-    </nav>
+
+  <!-- Navigation bar (same on every page) -->
+  <header class="nav" id="nav">
+    <article class="container nav-inner">
+      <a class="brand" href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="30" height="30">
+        Pokémon Finder
+      </a>
+
+      <button class="menu-btn" id="menu-btn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu">
+        {{ icon("menu") }}
+      </button>
+
+      <article class="nav-menu" id="nav-menu">
+        <nav class="nav-links" aria-label="Main">
+          <a href="{{ url_for('home') }}#types" class="{{ 'active' if request.endpoint == 'type_page' }}">Types</a>
+          <a href="{{ url_for('random_pokemon') }}" data-loading>Random</a>
+          <a href="{{ url_for('favorites') }}" class="{{ 'active' if request.endpoint == 'favorites' }}">My favorites</a>
+        </nav>
+
+        {# the home page already has a big search box #}
+        {% if request.endpoint != 'home' %}
+        <form class="nav-search" action="{{ url_for('search') }}" method="get" role="search" data-loading>
+          {{ icon("search") }}
+          <label class="sr-only" for="nav-q">Search Pokémon</label>
+          <input id="nav-q" type="search" name="q" placeholder="Search Pokémon" value="{{ query or '' }}" maxlength="30" required>
+        </form>
+        {% endif %}
+
+        <article class="nav-user">
+          {% if session.get('user_id') %}
+            {% set email = session.get('user_email', 'user') %}
+            <span class="avatar" aria-hidden="true">{{ email[0] | upper }}</span>
+            <span class="user-name">{{ email.split('@')[0] }}</span>
+            <form action="{{ url_for('logout') }}" method="post">
+              <button class="btn btn-small btn-ghost" type="submit">Log out</button>
+            </form>
+          {% else %}
+            <a class="btn btn-small btn-ghost" href="{{ url_for('login') }}">Log in</a>
+            <a class="btn btn-small btn-primary" href="{{ url_for('signup') }}">Sign up</a>
+          {% endif %}
+        </article>
+      </article>
+    </article>
   </header>
-  <main class="container">
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}<div class="flash">{% for m in messages %}<p>{{ m }}</p>{% endfor %}</div>{% endif %}
-    {% endwith %}
+
+  <!-- Messages from flash("...", "success") or flash("...", "error") -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <article class="container flash-area">
+      {% for category, message in messages %}
+      <article class="flash flash-{{ 'error' if category == 'error' else 'success' }}" role="status">
+        {{ icon("alert" if category == "error" else "check") }}
+        <span>{{ message }}</span>
+      </article>
+      {% endfor %}
+    </article>
+    {% endif %}
+  {% endwith %}
+
+  <main>
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="footer">
+    <article class="container">
+      <span>Pokémon data from <a href="https://pokeapi.co" target="_blank" rel="noopener">PokéAPI</a>. Pokémon and its names belong to Nintendo, Game Freak and Creatures.</span>
+      <span>GIN446 team project</span>
+    </article>
+  </footer>
+
+  <!-- Loading message, shown while the next page is loading -->
+  <article class="loading" id="loading" hidden>
+    <article class="loading-box" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Looking up Pokémon...</span>
+    </article>
+  </article>
+
+  <script>
+    // Open and close the menu on small screens
+    var nav = document.getElementById("nav");
+    var menuBtn = document.getElementById("menu-btn");
+    menuBtn.addEventListener("click", function () {
+      var open = nav.classList.toggle("open");
+      menuBtn.setAttribute("aria-expanded", open);
+    });
+
+    // Show "Looking up Pokémon..." after a short wait when a search
+    // is sent or a link marked with data-loading is clicked.
+    // Calls to PokéAPI can take a second, so the user knows something is happening.
+    var loading = document.getElementById("loading");
+    var timer = null;
+    document.querySelectorAll("[data-loading]").forEach(function (el) {
+      var eventName = el.tagName === "FORM" ? "submit" : "click";
+      el.addEventListener(eventName, function () {
+        timer = setTimeout(function () { loading.hidden = false; }, 250);
+      });
+    });
+
+    // Hide it again when the user comes back with the Back button
+    window.addEventListener("pageshow", function () {
+      clearTimeout(timer);
+      loading.hidden = true;
+    });
+  </script>
 </body>
 </html>

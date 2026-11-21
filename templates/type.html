@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "macros.html" import pokemon_card, pager %}
+
+{# Route: GET /type/<name>   (function name: type_page)
+   Needs:
+     type_name    for example "fire"
+     pokemon      list of Pokémon for this page, each with id, name, sprite
+                  (types is optional here, the cards work without it)
+     total        how many Pokémon have this type
+     page         current page number (starts at 1)
+     total_pages  how many pages there are #}
+
+{% block title %}{{ type_name | capitalize }} type | Pokémon Finder{% endblock %}
+
+{% block content %}
+<section class="type-band type-{{ type_name }}">
+  <div class="container">
+    <h1>{{ type_name | capitalize }} type</h1>
+    <p class="lead">{{ total }} Pokémon {{ "has" if total == 1 else "have" }} this type.</p>
+  </div>
+</section>
+
+<section class="container page tight-top type-{{ type_name }}">
+  <div class="card-grid">
+    {% for p in pokemon %}
+      {{ pokemon_card(p) }}
+    {% endfor %}
+  </div>
+
+  {{ pager(page, total_pages, "type_page", name=type_name) }}
+</section>
+{% endblock %}

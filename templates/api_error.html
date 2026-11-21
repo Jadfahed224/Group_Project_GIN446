@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+
+{# Shown when PokéAPI is slow or down (timeout or connection error).
+   Use it like this in app.py:
+     return render_template("api_error.html"), 503 #}
+
+{% block title %}PokéAPI is not answering | Pokémon Finder{% endblock %}
+
+{% block content %}
+<section class="container page">
+  <article class="empty">
+    <article class="empty-icon is-error">{{ icon("alert") }}</article>
+    <h1>PokéAPI is not answering</h1>
+    <p>We cannot load Pokémon data right now. Your favorites are safe. Try again in a minute.</p>
+    <article class="actions">
+      <a class="btn btn-primary" href="{{ request.url }}" data-loading>Try again</a>
+      <a class="btn btn-ghost" href="{{ url_for('favorites') }}">My favorites</a>
+    </article>
+  </article>
+</section>
+{% endblock %}
