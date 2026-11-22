@@ -1,13 +1,43 @@
 {% extends "base.html" %}
-{% block title %}Log in{% endblock %}
+{% from "macros.html" import icon %}
+
+{# Route: GET and POST /login   (function name: login)
+   Needs (only after a failed POST):
+     error   message to show, for example "Wrong email or password. Check them and try again."
+     email   what the user typed, so they do not have to type it again
+   The form sends: email, password (and next, if the user came from a page that needs login) #}
+
+{% block title %}Log in | Pokémon Finder{% endblock %}
+
 {% block content %}
-<h1>Log in</h1>
-<form method="post" action="{{ url_for('login') }}" novalidate class="auth">
-  <label>Email <input type="email" name="email" value="{{ data.get('email','') }}"></label>
-  {% if errors.get('email') %}<span class="error">{{ errors['email'] }}</span>{% endif %}
-  <label>Password <input type="password" name="password"></label>
-  {% if errors.get('password') %}<span class="error">{{ errors['password'] }}</span>{% endif %}
-  <button type="submit">Log in</button>
-</form>
-<p>No account? <a href="{{ url_for('signup') }}">Sign up</a>.</p>
+<section class="auth-page">
+  <article class="container">
+    <article class="auth-card">
+      <h1>Log in</h1>
+      <p class="sub">Log in to save Pokémon to your favorites</p>
+
+      {% if error %}
+      <article class=" flash flash-error" role="alert">{{ icon("alert") }}<span>{{ error }}</span></article>
+      {% endif %}
+
+      <form action="{{ url_for('login') }} method="post" novalidate>
+        {# page to go back to after login, kept even after a wrong password #}
+        {% set next_page = request.args.get('next') or request.form.get('next') %}
+        {% if next_page %}
+        <input type="hidden" name="next" value="{{ next_page }}">
+        {% endif %}
+
+        <article class="field">
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" autocomplete="current-password" required>
+        </article>
+
+        <button class="btnbtn-primary btn-block" type="submit">Log in</button>
+      </form>
+
+      <p class="auth-switch">No account yet? <a href="{{ url_for('signup') }}">Sign up</a></p>
+    </article>
+  </article>
+</section>
+
 {% endblock %}

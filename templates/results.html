@@ -1,17 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Results{% endblock %}
+{% from "macros.html" import icon, pokemon_card, pager %}
+
+{# Route: GET /search?q=<text>   (function name: search)
+   Needs:
+     query        the text the user typed
+     results      list of Pokémon for this page, each with id, name, sprite, types
+     total        how many Pokémon matched in all
+     page         current page number (starts at 1)
+     total_pages  how many pages there are (20 Pokémon per page) #}
+
+{% block title %}Results for “{{ query }}” | Pokémon Finder{% endblock %}
+
 {% block content %}
-<h1>Results{% if query %} for "{{ query }}"{% endif %}</h1>
-{% if items %}
-  <div class="cards">
-    {% for it in items %}
-      <a class="card" href="{{ url_for('item', item_id=it.id) }}">
-        <img src="{{ it.image }}" alt="{{ it.title }}">
-        <span>{{ it.title }}</span>
-      </a>
-    {% endfor %}
-  </div>
-{% else %}
-  <p class="error">Nothing found. Try another search.</p>
-{% endif %}
+<section class="container page">
+
+  {% if results %}
+    <h1>Results for “{{ query }}”</h1>
+    <p class="lead">
+      {{ total }} Pokémon {{ "matches" if total == 1 else "match" }} “{{ query }}”.
+    </p>
+
+    <article class="card-grid">
+      {% for p in results %}
+        {{ pokemon_card(p) }}
+      {% endfor %}
+    </article>
+
+    {{ pager(page, total_pages, "search", q=query) }}
+
+    <p class="hint-line">
+      {{ icon("search") }}
+      <span>Looking for something else? Search by number, or <a href="{{ url_for('home') }}#types">browse by type</a>.</span>
+    </p>
+
+  {% else %}
+    <article class="empty">
+      <article class="empty-icon">{{ icon("search") }}</article>
+      <h1>No Pokémon matches “{{ query }}”</h1>
+      <p>Check the spelling, or type only part of the name, like “pika”.</p>
+      <article class="actions">
+        <a class="btn btn-ghost" href="{{ url_for('home') }}">Clear search</a>
+        {#<a class="btn btn-primary" href="{{ url_for('random_pokemon') }}" data-loading>Random Pokémon</a>#}
+      </article>
+    </article>
+  {% endif %}
+
+</section>
 {% endblock %}

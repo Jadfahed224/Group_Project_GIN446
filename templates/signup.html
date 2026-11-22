@@ -1,15 +1,53 @@
 {% extends "base.html" %}
-{% block title %}Sign up{% endblock %}
+
+{# Route: GET and POST /signup   (function name: signup)
+   Needs (only after a failed POST):
+     errors  dict with a message for each wrong field, for example
+             {"email": "This email already has an account.",
+              "password": "Your password needs at least 8 characters.",
+              "confirm": "The two passwords are not the same."}
+     email   what the user typed
+   The form sends: email, password, confirm #}
+
+{% block title %}Sign up | Pokémon Finder{% endblock %}
+
 {% block content %}
-<h1>Create an account</h1>
-<form method="post" action="{{ url_for('signup') }}" novalidate class="auth">
-  <label>Email <input type="email" name="email" value="{{ data.get('email','') }}"></label>
-  {% if errors.get('email') %}<span class="error">{{ errors['email'] }}</span>{% endif %}
-  <label>Password <input type="password" name="password"></label>
-  {% if errors.get('password') %}<span class="error">{{ errors['password'] }}</span>{% endif %}
-  <label>Confirm password <input type="password" name="confirm"></label>
-  {% if errors.get('confirm') %}<span class="error">{{ errors['confirm'] }}</span>{% endif %}
-  <button type="submit">Sign up</button>
-</form>
-<p>Already have an account? <a href="{{ url_for('login') }}">Log in</a>.</p>
+{% set errors = errors or {} %}
+<section class="auth-page">
+  <article class="container">
+    <article class="auth-card">
+      <h1>Sign up</h1>
+      <p class="sub">It takes a few seconds. We only ask for an email.</p>
+
+      <form action="{{ url_for('signup') }}" method="post" novalidate>
+
+        <article class="field {{ 'has-error' if errors.email }}">
+          <label for="email">Email</label>
+          <input id="email" type="email" name="email" value="{{ email or '' }}" maxlength="120" autocomplete="email" required>
+          {% if errors.email %}<p class="field-error">{{ errors.email }}</p>{% endif %}
+        </article>
+
+        <article class="field {{ 'has-error' if errors.password }}">
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" minlength="8" autocomplete="new-password" required>
+          {% if errors.password %}
+            <p class="field-error">{{ errors.password }}</p>
+          {% else %}
+            <p class="field-hint">At least 8 characters.</p>
+          {% endif %}
+        </article>
+
+        <article class="field {{ 'has-error' if errors.confirm }}">
+          <label for="confirm">Confirm password</label>
+          <input id="confirm" type="password" name="confirm" autocomplete="new-password" required>
+          {% if errors.confirm %}<p class="field-error">{{ errors.confirm }}</p>{% endif %}
+        </article>
+
+        <button class="btn btn-primary btn-block" type="submit">Create account</button>
+      </form>
+
+      <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+    </article>
+  </article>
+</section>
 {% endblock %}
