@@ -4,7 +4,7 @@
 {# Route: GET /type/<name>   (function name: type_page)
    Needs:
      type_name    for example "fire"
-     pokemon      list of Pokémon for this page, each with id, name, sprite
+     pokemons     list of Pokémon for this page, each with id, name, image
                   (types is optional here, the cards work without it)
      total        how many Pokémon have this type
      page         current page number (starts at 1)
@@ -22,7 +22,7 @@
 
 <section class="container page tight-top type-{{ type_name }}">
   <div class="card-grid">
-    {% for p in pokemon %}
+    {% for p in pokemons %}
       {{ pokemon_card(p) }}
     {% endfor %}
   </div>

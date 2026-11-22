@@ -4,7 +4,7 @@
 {# Route: GET /search?q=<text>   (function name: search)
    Needs:
      query        the text the user typed
-     results      list of Pokémon for this page, each with id, name, sprite, types
+     pokemons     list of Pokémon for this page, each with id, name, image, types
      total        how many Pokémon matched in all
      page         current page number (starts at 1)
      total_pages  how many pages there are (20 Pokémon per page) #}
@@ -14,14 +14,14 @@
 {% block content %}
 <section class="container page">
 
-  {% if results %}
+  {% if pokemons %}
     <h1>Results for “{{ query }}”</h1>
     <p class="lead">
       {{ total }} Pokémon {{ "matches" if total == 1 else "match" }} “{{ query }}”.
     </p>
 
     <article class="card-grid">
-      {% for p in results %}
+      {% for p in pokemons %}
         {{ pokemon_card(p) }}
       {% endfor %}
     </article>
@@ -40,7 +40,7 @@
       <p>Check the spelling, or type only part of the name, like “pika”.</p>
       <article class="actions">
         <a class="btn btn-ghost" href="{{ url_for('home') }}">Clear search</a>
-        {#<a class="btn btn-primary" href="{{ url_for('random_pokemon') }}" data-loading>Random Pokémon</a>#}
+        <a class="btn btn-primary" href="{{ url_for('random_pokemon') }}" data-loading>Random Pokémon</a>
       </article>
     </article>
   {% endif %}

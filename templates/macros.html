@@ -53,11 +53,12 @@
 
 
 {# One Pokémon card, used on the results page and the type page.
-   p needs: p.id, p.name, p.sprite and (optional) p.types #}
+   p needs: p.id, p.name, p.image and (optional) p.types
+   The link uses the number: names like "Mr Mime" are not valid in the URL. #}
 {% macro pokemon_card(p) -%}
-<a class="card" href="{{ url_for('pokemon_page', name_or_id=p.name) }}" data-loading>
+<a class="card" href="{{ url_for('pokemon_page', name_or_id=p.id) }}" data-loading>
   <article class="card-art {% if p.types %}type-{{ p.types[0] }}{% endif %}">
-    {{ sprite(p.sprite, p.name) }}
+    {{ sprite(p.image, p.name) }}
   </article>
   <article class="card-body">
     <span class="dex">{{ dex(p.id) }}</span>

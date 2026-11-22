@@ -4,7 +4,7 @@
 {# Route: GET /favorites   (function name: favorites, needs login)
    Needs:
      favorites   list of Favorite rows from the database, newest first.
-                 Each one has: id, pokemon_id, pokemon_name, sprite_url, saved_at #}
+                 Each one has: id, item_id (the Pokédex number), item_title, item_image #}
 
 {% block title %}My favorites | Pokémon Finder{% endblock %}
 
@@ -29,13 +29,13 @@
   <ul class="fav-list">
     {% for fav in favorites %}
     <li class="fav-row">
-      <article class="fav-art">{{ sprite(fav.sprite_url, fav.pokemon_name) }}</article>
-      <span class="dex">{{ dex(fav.pokemon_id) }}</span>
-      <span class="fav-name">{{ nice(fav.pokemon_name) }}</span>
-      <span class="fav-date">Saved {{ fav.saved_at.strftime("%d %b %Y") }}</span>
+      <article class="fav-art">{{ sprite(fav.item_image, fav.item_title) }}</article>
+      <span class="dex">{{ dex(fav.item_id) }}</span>
+      <span class="fav-name">{{ nice(fav.item_title) }}</span>
       <article class="fav-actions">
-        <a class="btn btn-small btn-ghost" href="{{ url_for('pokemon_page', name_or_id=fav.pokemon_id) }}" data-loading>View</a>
-        <form action="{{ url_for('favorites_remove', fav_id=fav.id) }}" method="post">
+        <a class="btn btn-small btn-ghost" href="{{ url_for('pokemon_page', name_or_id=fav.item_id) }}" data-loading>View</a>
+        <form action="{{ url_for('favorites_remove') }}" method="post">
+          <input type="hidden" name="item_id" value="{{ fav.item_id }}">
           <button class="btn btn-small btn-danger" type="submit">Remove</button>
         </form>
       </article>
