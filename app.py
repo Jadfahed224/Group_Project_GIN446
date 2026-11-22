@@ -1,5 +1,5 @@
 """
-<YOUR PROJECT NAME> -- a Flask web app (team project starter).
+PokeAPI -- a Flask web app (team project starter).
 
 Content comes from an external API (see api_client.py). The only data stored
 is user accounts and their favorites (see models.py). Authentication is
@@ -8,6 +8,8 @@ email + password with Flask sessions.
 Run locally:   flask run --debug    ->   http://127.0.0.1:5000
 """
 import os
+import math
+import random
 from functools import wraps
 
 from flask import (Flask, render_template, request, redirect, url_for,
@@ -17,6 +19,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Favorite
 import api_client
 from validators import validate_signup, validate_login
+from validators import validate_signup, validate_login
+from validators import validate_search
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
@@ -63,25 +67,79 @@ def login_required(view):
     return wrapped
 
 
-# ---------- content (from your API) --------------------------------
+# ---------- content from PokeAPI ----------------------------
+PER_PAGE = 20   # at most 20 Pokémon on one results page
+
+
+def paginate(items, page):
+    """Return (the items of this page, the page number, the number of pages)."""
+    total_pages = max(1, math.ceil(len(items) / PER_PAGE))
+    page = min(max(page, 1), total_pages)   # keep page between 1 and total_pages
+    start = (page - 1) * PER_PAGE
+    return items[start:start + PER_PAGE], page, total_pages
+
+
 @app.route("/")
 def home():
-    return render_template("home.html")
+    try:
+        types = api_client.get_type_names()
+    except api_client.PokeAPIError:
+        types = []   # PokéAPI is down: still show the page, without type buttons
+    return render_template("home.html", types=types)
 
 
 @app.route("/search")
 def search():
-    query = request.args.get("q", "").strip()
-    items = api_client.search(query) if query else []
-    return render_template("results.html", items=items, query=query)
+    error, text = validate_search(request.args.get("q", ""))
+    if error:
+        flash(error)
+        return redirect(url_for("home"))
+    matches = api_client.search(text)
+    page_items, page, total_pages = paginate(matches, request.args.get("page", 1, type=int))
+    return render_template("results.html", query=text, total=len(matches),
+                           pokemons=api_client.get_cards(page_items),
+                           page=page, total_pages=total_pages)
 
 
-@app.route("/item/<item_id>")
-def item(item_id):
-    data = api_client.get_item(item_id)
-    if not data:
+@app.route("/type/<name>")
+def type_page(name):
+    name = name.lower()
+    if name not in api_client.get_type_names():
         abort(404)
-    return render_template("detail.html", item=data)
+    members = api_client.get_type_members(name)
+    page_items, page, total_pages = paginate(members, request.args.get("page", 1, type=int))
+    return render_template("type.html", type_name=name, total=len(members),
+                           pokemons=api_client.get_cards(page_items),
+                           page=page, total_pages=total_pages)
+
+
+@app.route("/pokemon/<name_or_id>")
+def pokemon(name_or_id):
+    species = api_client.find_species(name_or_id)
+    if species is None:
+        abort(404)
+    data = api_client.get_pokemon_details(species["id"])
+    if data is None:
+        abort(404)
+    return render_template("detail.html", pokemon=data)
+
+
+@app.route("/random")
+def random_pokemon():
+    species = random.choice(api_client.get_species_list())
+    return redirect(url_for("pokemon", name_or_id=species["id"]))
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template("error.html", title="Not found",
+                           message="We could not find this page or this Pokémon."), 404
+
+
+@app.errorhandler(api_client.PokeAPIError)
+def pokeapi_down(error):
+    return render_template("error.html", title="PokéAPI is not answering",
+                           message="We could not reach PokéAPI. Please try again in a minute."), 503
 
 
 # ===================================================================
