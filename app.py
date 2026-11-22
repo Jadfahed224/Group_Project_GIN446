@@ -18,9 +18,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from models import db, User, Favorite
 import api_client
-from validators import validate_signup, validate_login
-from validators import validate_signup, validate_login
-from validators import validate_search
+from validators import validate_signup, validate_login, validate_search
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
@@ -51,7 +49,7 @@ def inject_globals():
     user = None
     favorite_ids = set()
     if "user_id" in session:
-        user = User.query.get(session["user_id"])
+        user = db.session.get(User, session["user_id"])
         if user:
             favorite_ids = {f.item_id for f in user.favorites}
     return {"current_user": user, "favorite_ids": favorite_ids}
@@ -114,32 +112,31 @@ def type_page(name):
 
 
 @app.route("/pokemon/<name_or_id>")
-def pokemon(name_or_id):
+def pokemon_page(name_or_id):
     species = api_client.find_species(name_or_id)
     if species is None:
         abort(404)
     data = api_client.get_pokemon_details(species["id"])
     if data is None:
         abort(404)
-    return render_template("detail.html", pokemon=data)
+    return render_template("pokemon.html", pokemon=data)
 
 
 @app.route("/random")
 def random_pokemon():
     species = random.choice(api_client.get_species_list())
-    return redirect(url_for("pokemon", name_or_id=species["id"]))
+    return redirect(url_for("pokemon_page", name_or_id=species["id"]))
 
 
 @app.errorhandler(404)
 def not_found(error):
-    return render_template("error.html", title="Not found",
+    return render_template("404.html",
                            message="We could not find this page or this Pokémon."), 404
 
 
 @app.errorhandler(api_client.PokeAPIError)
 def pokeapi_down(error):
-    return render_template("error.html", title="PokéAPI is not answering",
-                           message="We could not reach PokéAPI. Please try again in a minute."), 503
+    return render_template("api_error.html"), 503
 
 
 # ===================================================================
@@ -175,7 +172,7 @@ def login():
     return render_template("login.html", errors={}, data={})
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])   # base.html logs out with a POST form
 def logout():
     # TODO: end the session (hint: session.clear()), then redirect home.
     return redirect(url_for("home"))
@@ -185,7 +182,8 @@ def logout():
 @app.route("/favorites")
 @login_required
 def favorites():
-    items = Favorite.query.filter_by(user_id=session["user_id"]).all()
+    items = (Favorite.query.filter_by(user_id=session["user_id"])
+             .order_by(Favorite.id.desc()).all())   # newest first
     return render_template("favorites.html", favorites=items)
 
 
