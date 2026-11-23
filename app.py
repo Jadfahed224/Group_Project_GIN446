@@ -136,7 +136,12 @@ def pokemon_page(name_or_id):
     data = api_client.get_pokemon_details(species["id"])
     if data is None:
         abort(404)
-    return render_template("pokemon.html", pokemon=data)
+    favorite_ids = set()
+    if current_user() is not None:
+        saved = Favorite.query.filter_by(user_id=session["user_id"]).all()
+        favorite_ids = {str(f.pokemon_id) for f in saved}
+    return render_template( "pokemon.html",pokemon=data,favorite_ids=favorite_ids)
+    
 
 
 @app.route("/random")
@@ -203,42 +208,42 @@ def logout():
 @app.route("/favorites")
 @login_required
 def favorites():
-    items = (Favorite.query.filter_by(user_id=session["user_id"])
-             .order_by(Favorite.id.desc()).all())   # newest first
-    return render_template("favorites.html", favorites=items)
+    rows = (Favorite.query.filter_by(user_id=session["user_id"]).order_by(Favorite.saved_at.desc(), Favorite.id.desc()).all())
+    return render_template("favorites.html", favorites=rows)
 
 
 @app.route("/favorites/add", methods=["POST"])
 @login_required
 def favorites_add():
-    item_id = request.form.get("item_id", "").strip()
-    if item_id:
-        exists = Favorite.query.filter_by(
-            user_id=session["user_id"], item_id=item_id).first()
-        if exists:
-            flash("Already in your favorites.")
-        else:
-            db.session.add(Favorite(
-                user_id=session["user_id"], item_id=item_id,
-                item_title=request.form.get("item_title", ""),
-                item_image=request.form.get("item_image", "")))
-            db.session.commit()
-            flash("Saved to favorites.")
-    return redirect(request.form.get("next") or url_for("favorites"))
-
-
-@app.route("/favorites/remove", methods=["POST"])
-@login_required
-def favorites_remove():
-    item_id = request.form.get("item_id", "").strip()
-    fav = Favorite.query.filter_by(
-        user_id=session["user_id"], item_id=item_id).first()
-    if fav:
-        db.session.delete(fav)
+    text = request.form.get("item_id", "").strip()
+    species = api_client.find_species(text) if text.isdigit() else None
+    if species is None:
+        abort(400) # not a real Pokémon: nothing is saved
+    user_id = session["user_id"]
+    if Favorite.query.filter_by(user_id=user_id, pokemon_id=species["id"]).first():
+        flash("Already in your favorites.")
+    else:
+        db.session.add(Favorite(user_id=user_id,
+                                pokemon_id=species["id"],
+                                pokemon_name=species["name"],
+                                sprite_url=f"{api_client.SPRITE_URL}/{species['id']}.png"))
         db.session.commit()
-        flash("Removed from favorites.")
-    return redirect(request.form.get("next") or url_for("favorites"))
+        flash(f"{nice(species['name'])} is saved in your favorites.", "success")
+    return redirect(url_for("favorites"))
 
+
+@app.route("/favorites/remove/<int:fav_id>", methods=["POST"])
+@login_required
+def favorites_remove(fav_id):
+    # Look for the favorite by its id AND the logged-in user: nobody can remove someone else's.
+    fav = Favorite.query.filter_by(id=fav_id, user_id=session["user_id"]).first()
+    if fav is None:
+        abort(404)
+    name = fav.pokemon_name
+    db.session.delete(fav)
+    db.session.commit()
+    flash(f"{nice(name)} was removed from your favorites.", "success")
+    return redirect(url_for("favorites"))
 
 if __name__ == "__main__":
     app.run(debug=True)
