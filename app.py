@@ -43,26 +43,43 @@ with app.app_context():
     db.create_all()
 
 
-@app.context_processor
-def inject_globals():
-    """Make the logged-in user (and their favorite ids) available in templates."""
-    user = None
-    favorite_ids = set()
-    if "user_id" in session:
-        user = db.session.get(User, session["user_id"])
-        if user:
-            favorite_ids = {f.item_id for f in user.favorites}
-    return {"current_user": user, "favorite_ids": favorite_ids}
+# ---------- login helpers -------------------
+def current_user():
+    """The User who is logged in, or None."""
+    user_id = session.get("user_id")
+    if user_id is None:
+        return None
+    return db.session.get(User, user_id)
 
+def log_in(user):
+    """Start a fresh session for this user."""
+    session.clear()
+    session["user_id"] = user.id
+    session["user_email"] = user.email 
 
 def login_required(view):
+    """Put @login_required on a route: visitors are sent to the login page."""
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if "user_id" not in session:
-            flash("Please log in first.")
-            return redirect(url_for("login"))
+        if current_user() is None:
+            session.clear()  
+            flash("Log in to save Pokémon to your favorites.", "error")
+            next_page = request.path if request.method == "GET" else None
+            return redirect(url_for("login", next=next_page))
         return view(*args, **kwargs)
     return wrapped
+
+def safe_next(target):
+    """Where to go after logging in: only a page of our own site, like "/favorites"."""
+    if target and target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        return target
+    return url_for("home")
+
+
+def nice(name):
+    """'mr-mime' -> 'Mr Mime' (the same as the nice() macro in macros.html)."""
+    return name.replace("-", " ").title()
+
 
 
 # ---------- content from PokeAPI ----------------------------
