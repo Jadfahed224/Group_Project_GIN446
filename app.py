@@ -157,41 +157,45 @@ def pokeapi_down(error):
 
 
 # ===================================================================
-# AUTHENTICATION  --  YOU BUILD THIS (sign-up, log-in, log-out, sessions)
+# ACCOUNTS AND FAVORITES (Joseph)
 # ===================================================================
-# This is YOUR work. The routes below are stubs. Implement them using what
-# you learned in the "Sessions & Login" slides. Tools already imported for
-# you at the top: generate_password_hash, check_password_hash, session,
-# and the validators validate_signup / validate_login.
-#
-# What each route should do:
-#   signup (POST): validate the form; reject an email that already exists;
-#                  hash the password; create the User; store session["user_id"];
-#                  redirect home.
-#   login  (POST): validate; find the user by email; check_password_hash;
-#                  on success store session["user_id"]; else show an error.
-#   logout        : session.clear(); redirect home.
-# A worked version of favorites below shows how session["user_id"] is used.
-
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        # TODO: implement sign-up (see the Sessions & Login slides).
-        pass
-    return render_template("signup.html", errors={}, data={})
+        errors, email = validate_signup(request.form)
+        if not errors and User.query.filter_by(email=email).first() is not None:
+            errors["email"] = "This email already has an account."
+        if errors:
+            return render_template("signup.html", errors=errors, email=email)
+        user = User(email=email,password_hash=generate_password_hash(request.form["password"]))
+        db.session.add(user)
+        db.session.commit()
+        log_in(user)
+        flash("Welcome! Your account is ready.", "success")
+        return redirect(url_for("home"))
+    return render_template("signup.html", errors={}, email="")
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        # TODO: implement log-in (see the Sessions & Login slides).
-        pass
-    return render_template("login.html", errors={}, data={})
+        errors, email = validate_login(request.form)
+        if errors:
+            return render_template("login.html", email=email,error="Type your email and your password.")
+        user = User.query.filter_by(email=email).first()
+        if user is None or not check_password_hash(user.password_hash, request.form["password"]): # One message for both cases, so nobody can test which emails have an account.
+            return render_template("login.html", email=email,error="Wrong email or password. Check them and try again.")
+        log_in(user)
+        flash("Welcome back!", "success")
+        return redirect(safe_next(request.form.get("next")))
+    return render_template("login.html", error=None, email="")
 
 
-@app.route("/logout", methods=["POST"])   # base.html logs out with a POST form
+@app.route("/logout", methods=["POST"])
+@login_required
 def logout():
-    # TODO: end the session (hint: session.clear()), then redirect home.
+    session.clear()
+    flash("You are logged out.", "success")
     return redirect(url_for("home"))
 
 
