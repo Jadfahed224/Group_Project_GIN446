@@ -1,10 +1,11 @@
+
 {% extends "base.html" %}
 {% from "macros.html" import icon, nice, dex, sprite %}
 
-{# Route: GET /favorites   (function name: favorites, needs login)
+{# Route: GET /favorites
    Needs:
-     favorites   list of Favorite rows from the database, newest first.
-                 Each one has: id, item_id (the Pokédex number), item_title, item_image #}
+     favorites   list of Favorite rows from the database.
+                 Each one has: id, pokemon_id, pokemon_name, sprite_url #}
 
 {% block title %}My favorites | Pokémon Finder{% endblock %}
 
@@ -21,7 +22,7 @@
           Only you can see this list.
         {% endif %}
       </p>
-  </article>
+    </article>
     {% if favorites | length > 1 %}<span class="muted">Newest first</span>{% endif %}
   </article>
 
@@ -29,13 +30,12 @@
   <ul class="fav-list">
     {% for fav in favorites %}
     <li class="fav-row">
-      <article class="fav-art">{{ sprite(fav.item_image, fav.item_title) }}</article>
-      <span class="dex">{{ dex(fav.item_id) }}</span>
-      <span class="fav-name">{{ nice(fav.item_title) }}</span>
+      <article class="fav-art">{{ sprite(fav.sprite_url, fav.pokemon_name) }}</article>
+      <span class="dex">{{ dex(fav.pokemon_id) }}</span>
+      <span class="fav-name">{{ nice(fav.pokemon_name) }}</span>
       <article class="fav-actions">
-        <a class="btn btn-small btn-ghost" href="{{ url_for('pokemon_page', name_or_id=fav.item_id) }}" data-loading>View</a>
-        <form action="{{ url_for('favorites_remove') }}" method="post">
-          <input type="hidden" name="item_id" value="{{ fav.item_id }}">
+        <a class="btn btn-small btn-ghost" href="{{ url_for('pokemon_page', name_or_id=fav.pokemon_id) }}" data-loading>View</a>
+        <form action="{{ url_for('favorites_remove', fav_id=fav.id) }}" method="post">
           <button class="btn btn-small btn-danger" type="submit">Remove</button>
         </form>
       </article>

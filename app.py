@@ -43,26 +43,43 @@ with app.app_context():
     db.create_all()
 
 
-@app.context_processor
-def inject_globals():
-    """Make the logged-in user (and their favorite ids) available in templates."""
-    user = None
-    favorite_ids = set()
-    if "user_id" in session:
-        user = db.session.get(User, session["user_id"])
-        if user:
-            favorite_ids = {f.item_id for f in user.favorites}
-    return {"current_user": user, "favorite_ids": favorite_ids}
+# ---------- login helpers -------------------
+def current_user():
+    """The User who is logged in, or None."""
+    user_id = session.get("user_id")
+    if user_id is None:
+        return None
+    return db.session.get(User, user_id)
 
+def log_in(user):
+    """Start a fresh session for this user."""
+    session.clear()
+    session["user_id"] = user.id
+    session["user_email"] = user.email 
 
 def login_required(view):
+    """Put @login_required on a route: visitors are sent to the login page."""
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if "user_id" not in session:
-            flash("Please log in first.")
-            return redirect(url_for("login"))
+        if current_user() is None:
+            session.clear()  
+            flash("Log in to save Pokémon to your favorites.", "error")
+            next_page = request.path if request.method == "GET" else None
+            return redirect(url_for("login", next=next_page))
         return view(*args, **kwargs)
     return wrapped
+
+def safe_next(target):
+    """Where to go after logging in: only a page of our own site, like "/favorites"."""
+    if target and target.startswith("/") and not target.startswith("//") and "\\" not in target:
+        return target
+    return url_for("home")
+
+
+def nice(name):
+    """'mr-mime' -> 'Mr Mime' (the same as the nice() macro in macros.html)."""
+    return name.replace("-", " ").title()
+
 
 
 # ---------- content from PokeAPI ----------------------------
@@ -119,7 +136,12 @@ def pokemon_page(name_or_id):
     data = api_client.get_pokemon_details(species["id"])
     if data is None:
         abort(404)
-    return render_template("pokemon.html", pokemon=data)
+    favorite_ids = set()
+    if current_user() is not None:
+        saved = Favorite.query.filter_by(user_id=session["user_id"]).all()
+        favorite_ids = {str(f.pokemon_id) for f in saved}
+    return render_template( "pokemon.html",pokemon=data,favorite_ids=favorite_ids)
+    
 
 
 @app.route("/random")
@@ -140,41 +162,45 @@ def pokeapi_down(error):
 
 
 # ===================================================================
-# AUTHENTICATION  --  YOU BUILD THIS (sign-up, log-in, log-out, sessions)
+# ACCOUNTS AND FAVORITES (Joseph)
 # ===================================================================
-# This is YOUR work. The routes below are stubs. Implement them using what
-# you learned in the "Sessions & Login" slides. Tools already imported for
-# you at the top: generate_password_hash, check_password_hash, session,
-# and the validators validate_signup / validate_login.
-#
-# What each route should do:
-#   signup (POST): validate the form; reject an email that already exists;
-#                  hash the password; create the User; store session["user_id"];
-#                  redirect home.
-#   login  (POST): validate; find the user by email; check_password_hash;
-#                  on success store session["user_id"]; else show an error.
-#   logout        : session.clear(); redirect home.
-# A worked version of favorites below shows how session["user_id"] is used.
-
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        # TODO: implement sign-up (see the Sessions & Login slides).
-        pass
-    return render_template("signup.html", errors={}, data={})
+        errors, email = validate_signup(request.form)
+        if not errors and User.query.filter_by(email=email).first() is not None:
+            errors["email"] = "This email already has an account."
+        if errors:
+            return render_template("signup.html", errors=errors, email=email)
+        user = User(email=email,password_hash=generate_password_hash(request.form["password"]))
+        db.session.add(user)
+        db.session.commit()
+        log_in(user)
+        flash("Welcome! Your account is ready.", "success")
+        return redirect(url_for("home"))
+    return render_template("signup.html", errors={}, email="")
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        # TODO: implement log-in (see the Sessions & Login slides).
-        pass
-    return render_template("login.html", errors={}, data={})
+        errors, email = validate_login(request.form)
+        if errors:
+            return render_template("login.html", email=email,error="Type your email and your password.")
+        user = User.query.filter_by(email=email).first()
+        if user is None or not check_password_hash(user.password_hash, request.form["password"]): # One message for both cases, so nobody can test which emails have an account.
+            return render_template("login.html", email=email,error="Wrong email or password. Check them and try again.")
+        log_in(user)
+        flash("Welcome back!", "success")
+        return redirect(safe_next(request.form.get("next")))
+    return render_template("login.html", error=None, email="")
 
 
-@app.route("/logout", methods=["POST"])   # base.html logs out with a POST form
+@app.route("/logout", methods=["POST"])
+@login_required
 def logout():
-    # TODO: end the session (hint: session.clear()), then redirect home.
+    session.clear()
+    flash("You are logged out.", "success")
     return redirect(url_for("home"))
 
 
@@ -182,42 +208,42 @@ def logout():
 @app.route("/favorites")
 @login_required
 def favorites():
-    items = (Favorite.query.filter_by(user_id=session["user_id"])
-             .order_by(Favorite.id.desc()).all())   # newest first
-    return render_template("favorites.html", favorites=items)
+    rows = (Favorite.query.filter_by(user_id=session["user_id"]).order_by(Favorite.saved_at.desc(), Favorite.id.desc()).all())
+    return render_template("favorites.html", favorites=rows)
 
 
 @app.route("/favorites/add", methods=["POST"])
 @login_required
 def favorites_add():
-    item_id = request.form.get("item_id", "").strip()
-    if item_id:
-        exists = Favorite.query.filter_by(
-            user_id=session["user_id"], item_id=item_id).first()
-        if exists:
-            flash("Already in your favorites.")
-        else:
-            db.session.add(Favorite(
-                user_id=session["user_id"], item_id=item_id,
-                item_title=request.form.get("item_title", ""),
-                item_image=request.form.get("item_image", "")))
-            db.session.commit()
-            flash("Saved to favorites.")
-    return redirect(request.form.get("next") or url_for("favorites"))
-
-
-@app.route("/favorites/remove", methods=["POST"])
-@login_required
-def favorites_remove():
-    item_id = request.form.get("item_id", "").strip()
-    fav = Favorite.query.filter_by(
-        user_id=session["user_id"], item_id=item_id).first()
-    if fav:
-        db.session.delete(fav)
+    text = request.form.get("item_id", "").strip()
+    species = api_client.find_species(text) if text.isdigit() else None
+    if species is None:
+        abort(400) # not a real Pokémon: nothing is saved
+    user_id = session["user_id"]
+    if Favorite.query.filter_by(user_id=user_id, pokemon_id=species["id"]).first():
+        flash("Already in your favorites.")
+    else:
+        db.session.add(Favorite(user_id=user_id,
+                                pokemon_id=species["id"],
+                                pokemon_name=species["name"],
+                                sprite_url=f"{api_client.SPRITE_URL}/{species['id']}.png"))
         db.session.commit()
-        flash("Removed from favorites.")
-    return redirect(request.form.get("next") or url_for("favorites"))
+        flash(f"{nice(species['name'])} is saved in your favorites.", "success")
+    return redirect(url_for("favorites"))
 
+
+@app.route("/favorites/remove/<int:fav_id>", methods=["POST"])
+@login_required
+def favorites_remove(fav_id):
+    # Look for the favorite by its id AND the logged-in user: nobody can remove someone else's.
+    fav = Favorite.query.filter_by(id=fav_id, user_id=session["user_id"]).first()
+    if fav is None:
+        abort(404)
+    name = fav.pokemon_name
+    db.session.delete(fav)
+    db.session.commit()
+    flash(f"{nice(name)} was removed from your favorites.", "success")
+    return redirect(url_for("favorites"))
 
 if __name__ == "__main__":
     app.run(debug=True)

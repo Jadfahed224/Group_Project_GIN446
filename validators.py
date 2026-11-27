@@ -5,21 +5,21 @@ EMAIL = re.compile(r"^[\w.+-]+@[\w-]+\.[\w.-]+$")
 
 
 def validate_signup(form):
-    errors = {}
-    email = form.get("email", "").strip().lower()
-    password = form.get("password", "")
-    confirm = form.get("confirm", "")
-    if email == "":
-        errors["email"] = "Email is required."
-    elif not EMAIL.match(email):
-        errors["email"] = "Enter a valid email address."
-    if password == "":
-        errors["password"] = "Password is required."
-    elif len(password) < 8:   # signup.html tells the user 8
-        errors["password"] = "Password must be at least 8 characters."
-    if confirm != password:   # an empty confirm must not pass
-        errors["confirm"] = "Passwords do not match."
-    return errors, email
+ errors = {}
+ email = form.get("email", "").strip().lower()
+ password = form.get("password", "")
+ confirm = form.get("confirm", "")
+ if email == "":
+    errors["email"] = "Email is required."
+ elif len(email) > 120:
+    errors["email"] = "Email must be 120 characters or less."
+ elif not EMAIL.match(email):
+    errors["email"] = "Enter a valid email address."
+ if len(password) < 8:
+    errors["password"] = "Your password needs at least 8 characters."
+ if confirm != password:
+    errors["confirm"] = "The two passwords are not the same."
+ return errors, email
 
 
 def validate_login(form):
